@@ -1930,11 +1930,11 @@ class Shrink(object):
         except Exception as e:
             report_failure(e)
 
-    def migrate_aliases(self,source,target):
+    def migrate_aliases(self,source,target, dry_run=False):
         actions = []
         aliases = self.client.indices.get_alias()
         if source in aliases:
-            for alias in aliases[old_index]['aliases']:
+            for alias in aliases[source]['aliases']:
                 # actions.append({ 'add' :    { 'index' : new_index, 'alias': alias } })
                 add_dict = { 'add' : { 'index' : target, 'alias': alias } }
                 add_dict['add'].update(aliases[source]['aliases'][alias])
@@ -2060,6 +2060,7 @@ class Shrink(object):
                     self.pre_shrink_check(idx, dry_run=True)
                     self.loggit.info('DRY-RUN: Moving shards to shrink node: "{0}"'.format(self.shrink_node_name))
                     self.loggit.info('DRY-RUN: Shrinking index "{0}" to "{1}" with settings: {2}, wait_for_active_shards={3}'.format(idx, target, self.body, self.wait_for_active_shards))
+                    self.migrate_aliases(idx,target,dry_run=True)
                     if self.post_allocation:
                         self.loggit.info('DRY-RUN: Applying post-shrink allocation rule "{0}" to index "{1}"'.format('index.routing.allocation.{0}.{1}:{2}'.format(self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value']), target))
 
@@ -2105,7 +2106,7 @@ class Shrink(object):
                         self.loggit.info('Applying post-shrink allocation rule "{0}" to index "{1}"'.format('index.routing.allocation.{0}.{1}:{2}'.format(self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value']), target))
                         self.route_index(target, self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value'])
                     ## Migrate aliases to the target index
-                    migrate_aliases(idx,target)
+                    self.migrate_aliases(idx,target)
                     ## Delete, if flagged
                     if self.delete_after:
                         self.loggit.info('Deleting source index "{0}"'.format(idx))
