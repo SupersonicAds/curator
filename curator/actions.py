@@ -1931,18 +1931,19 @@ class Shrink(object):
             report_failure(e)
 
     def get_migrate_aliases_body(self,source,target):
-        body = None
         actions = []
         aliases = self.client.indices.get_alias()
-        if source in aliases:
-            for alias in aliases[source]['aliases']:
-                # actions.append({ 'add' :    { 'index' : new_index, 'alias': alias } })
-                add_dict = { 'add' : { 'index' : target, 'alias': alias } }
-                add_dict['add'].update(aliases[source]['aliases'][alias])
-                actions.append(add_dict)
-                actions.append({ 'remove' : { 'index' : source, 'alias': alias } })
-            body = { 'actions' : actions }
-        return body
+        if source not in aliases:
+            return None
+        for alias in aliases[source]['aliases']:
+            # actions.append({ 'add' :    { 'index' : new_index, 'alias': alias } })
+            add_dict = { 'add' : { 'index' : target, 'alias': alias } }
+            add_dict['add'].update(aliases[source]['aliases'][alias])
+            actions.append(add_dict)
+            actions.append({ 'remove' : { 'index' : source, 'alias': alias } })
+        if not actions:
+            return None
+        return { 'actions' : actions }
 
     def __log_action(self, error_msg, dry_run=False):
         if not dry_run:
