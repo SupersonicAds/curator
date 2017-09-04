@@ -1931,6 +1931,7 @@ class Shrink(object):
             report_failure(e)
 
     def get_migrate_aliases_body(self,source,target):
+        body = None
         actions = []
         aliases = self.client.indices.get_alias()
         if source in aliases:
@@ -2105,7 +2106,8 @@ class Shrink(object):
                     migrate_aliases_body = self.get_migrate_aliases_body(idx,target)
                     self.loggit.info('Migrating aliases from {0} index to {1} index...'.format(idx,target))
                     self.loggit.info('Migrate alias actions: {0}'.format(migrate_aliases_body))
-                    self.client.indices.update_aliases(body=migrate_aliases_body)
+                    if migrate_aliases_body is not None:
+                        self.client.indices.update_aliases(body=migrate_aliases_body)
                     ## Delete, if flagged
                     if self.delete_after:
                         self.loggit.info('Deleting source index "{0}"'.format(idx))
