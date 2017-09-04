@@ -169,6 +169,27 @@ forceMerging indices, to allow the cluster to quiesce.
 
 There is no default value.
 
+[[option_migrate_aliases]]
+== migrate_aliases
+
+NOTE: This setting is only used by the <<shrink,shrink>> action.
+
+[source,yaml]
+-------------
+action: shrink
+description: >-
+  Shrink selected indices on the node with the most available space.
+  Migrate all aliases associated with the source index to the target index.
+options:
+  shrink_node: DETERMINISTIC
+  migrate_aliases: True
+filters:
+  - filtertype: ...
+-------------
+
+The default value of this setting is `False`.  After an index has been successfully
+shrunk, the aliases of the source index will be migrated to the target index if the value of this settings is True.
+
 
 [[option_delete_after]]
 == delete_after
