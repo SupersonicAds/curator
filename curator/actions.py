@@ -1939,6 +1939,8 @@ class Shrink(object):
         aliases = self.client.indices.get_alias()
         if source not in aliases:
             return None
+        if 'aliases' not in aliases[source]:
+            return None
         for alias in aliases[source]['aliases']:
             # actions.append({ 'add' :    { 'index' : new_index, 'alias': alias } })
             add_dict = { 'add' : { 'index' : target, 'alias': alias } }
@@ -2059,13 +2061,12 @@ class Shrink(object):
                     self.pre_shrink_check(idx, dry_run=True)
                     self.loggit.info('DRY-RUN: Moving shards to shrink node: "{0}"'.format(self.shrink_node_name))
                     self.loggit.info('DRY-RUN: Shrinking index "{0}" to "{1}" with settings: {2}, wait_for_active_shards={3}'.format(idx, target, self.body, self.wait_for_active_shards))
+                    if self.post_allocation:
+                        self.loggit.info('DRY-RUN: Applying post-shrink allocation rule "{0}" to index "{1}"'.format('index.routing.allocation.{0}.{1}:{2}'.format(self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value']), target))
                     if self.migrate_aliases: # Migrate aliases to the target index
                         migrate_aliases_body = self.get_migrate_aliases_body(idx,target)
                         self.loggit.info('DRY-RUN: Migrating aliases from {0} index to {1} index...'.format(idx,target))
                         self.loggit.info('DRY-RUN: Migrate alias actions: {0}'.format(migrate_aliases_body))
-                    if self.post_allocation:
-                        self.loggit.info('DRY-RUN: Applying post-shrink allocation rule "{0}" to index "{1}"'.format('index.routing.allocation.{0}.{1}:{2}'.format(self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value']), target))
-
                     if self.delete_after:
                         self.loggit.info('DRY-RUN: Deleting source index "{0}"'.format(idx))
         except Exception as e:
