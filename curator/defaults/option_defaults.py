@@ -27,6 +27,9 @@ def delay():
             )
     }
 
+def migrate_aliases():
+    return { Optional('migrate_aliases', default=False): Any(bool, All(Any(str, unicode), Boolean())) }
+
 def delete_after():
     return { Optional('delete_after', default=True): Any(bool, All(Any(str, unicode), Boolean())) }
 

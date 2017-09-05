@@ -720,6 +720,7 @@ actions:
       number_of_replicas: 1
       shrink_prefix:
       shrink_suffix: '-shrink'
+      migrate_aliases: True
       delete_after: True
       post_allocation:
         allocation_type: include

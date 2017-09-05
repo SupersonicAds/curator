@@ -1752,7 +1752,7 @@ class Shrink(object):
                 delete_after=True, post_allocation={},
                 wait_for_active_shards=1,
                 extra_settings={}, wait_for_completion=True, wait_interval=9,
-                max_wait=-1):
+                max_wait=-1, migrate_aliases=False):
         """
         :arg ilo: A :class:`curator.indexlist.IndexList` object
         :arg shrink_node: The node name to use as the shrink target, or
@@ -1766,6 +1766,8 @@ class Shrink(object):
         :arg number_of_replicas: The number of replicas for the shrunk index
         :arg shrink_prefix: Prepend the shrunk index with this value
         :arg shrink_suffix: Append the value to the shrunk index (default: `-shrink`)
+        :arg migrate_aliases: Whether to migrate aliases from the source index to the taget index upon successful shrinking.
+        :type migrate_aliases: bool
         :arg delete_after: Whether to delete each index after shrinking. (default: `True`)
         :type delete_after: bool
         :arg post_allocation: If populated, the `allocation_type`, `key`, and 
@@ -1800,6 +1802,8 @@ class Shrink(object):
         self.shrink_prefix    = shrink_prefix
         #: Instance variable. Internal reference to `shrink_suffix`
         self.shrink_suffix    = shrink_suffix
+        #: Instance variable. Internal reference to `migrate_aliases`
+        self.migrate_aliases  = migrate_aliases
         #: Instance variable. Internal reference to `delete_after`
         self.delete_after     = delete_after
         #: Instance variable. Internal reference to `post_allocation`
@@ -1930,6 +1934,23 @@ class Shrink(object):
         except Exception as e:
             report_failure(e)
 
+    def get_migrate_aliases_body(self,source,target):
+        actions = []
+        aliases = self.client.indices.get_alias()
+        if source not in aliases:
+            return None
+        if 'aliases' not in aliases[source]:
+            return None
+        for alias in aliases[source]['aliases']:
+            # actions.append({ 'add' :    { 'index' : new_index, 'alias': alias } })
+            add_dict = { 'add' : { 'index' : target, 'alias': alias } }
+            add_dict['add'].update(aliases[source]['aliases'][alias])
+            actions.append(add_dict)
+            actions.append({ 'remove' : { 'index' : source, 'alias': alias } })
+        if not actions:
+            return None
+        return { 'actions' : actions }
+
     def __log_action(self, error_msg, dry_run=False):
         if not dry_run:
             raise ActionError(error_msg)
@@ -2042,6 +2063,10 @@ class Shrink(object):
                     self.loggit.info('DRY-RUN: Shrinking index "{0}" to "{1}" with settings: {2}, wait_for_active_shards={3}'.format(idx, target, self.body, self.wait_for_active_shards))
                     if self.post_allocation:
                         self.loggit.info('DRY-RUN: Applying post-shrink allocation rule "{0}" to index "{1}"'.format('index.routing.allocation.{0}.{1}:{2}'.format(self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value']), target))
+                    if self.migrate_aliases: # Migrate aliases to the target index
+                        migrate_aliases_body = self.get_migrate_aliases_body(idx,target)
+                        self.loggit.info('DRY-RUN: Migrating aliases from {0} index to {1} index...'.format(idx,target))
+                        self.loggit.info('DRY-RUN: Migrate alias actions: {0}'.format(migrate_aliases_body))
                     if self.delete_after:
                         self.loggit.info('DRY-RUN: Deleting source index "{0}"'.format(idx))
         except Exception as e:
@@ -2083,6 +2108,13 @@ class Shrink(object):
                     if self.post_allocation:
                         self.loggit.info('Applying post-shrink allocation rule "{0}" to index "{1}"'.format('index.routing.allocation.{0}.{1}:{2}'.format(self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value']), target))
                         self.route_index(target, self.post_allocation['allocation_type'], self.post_allocation['key'], self.post_allocation['value'])
+                    # Migrate aliases to the target index, if flagged
+                    if self.migrate_aliases:
+                        migrate_aliases_body = self.get_migrate_aliases_body(idx,target)
+                        self.loggit.info('Migrating aliases from {0} index to {1} index...'.format(idx,target))
+                        self.loggit.info('Migrate alias actions: {0}'.format(migrate_aliases_body))
+                        if migrate_aliases_body is not None:
+                            self.client.indices.update_aliases(body=migrate_aliases_body)
                     ## Delete, if flagged
                     if self.delete_after:
                         self.loggit.info('Deleting source index "{0}"'.format(idx))

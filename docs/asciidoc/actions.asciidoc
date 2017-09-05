@@ -1009,6 +1009,7 @@ options:
   number_of_replicas: 1
   shrink_prefix:
   shrink_suffix: '-shrink'
+  migrate_aliases: True
   delete_after: True
   post_allocation:
     allocation_type: include
@@ -1056,6 +1057,10 @@ are identified for shrinking by the filter block, and `DETERMINISTIC` is specifi
 the node selection process will be repeated for each successive index, preventing
 all of the space being consumed on a single node.
 
+Upon successful shrink, you might want to migrate the aliases from the source index to the target index.
+This can be especially useful if you want to delete the source index.
+In order to achive that, set The <<option_migrate_aliases,migrate_aliases>> option to True.
+
 By default, Curator will delete the source index after a successful shrink. This
 can be disabled by setting <<option_delete_after,delete_after>> to `False`.  If the source index,
 is not deleted after a successful shrink, Curator will remove the read-only setting and the
@@ -1082,6 +1087,7 @@ as needed.
 
 * <<option_continue,continue_if_exception>>
 * <<option_ignore_empty,ignore_empty_list>>
+* <<option_migrate_aliases,migrate_aliases>>
 * <<option_delete_after,delete_after>>
 * <<option_disable,disable_action>>
 * <<option_extra_settings,extra_settings>>
